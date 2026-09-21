@@ -1,0 +1,73 @@
+name: memory-zvec
+version: 1.3.1
+description: >
+  Zvec Vector Memory Provider — a community memory backend for Hermes Agent.
+  In-process vector storage (HNSW + RocksDB FTS) with native hybrid query
+  (vector similarity + scalar filter + FTS via MultiQuery + RRFReRanker) and
+  local embeddings via Ollama bge-m3 (1024-dim — same dimension as
+  memory-lancedb, so existing vectors migrate without re-embedding).
+  Exposes the same 6 tool schemas and lifecycle hooks as memory-lancedb;
+  switching backends is a config.yaml edit.
+
+  Lock governance for long-lived sessions (this port's focus):
+  v1.1.0 initialize-time write drain + backoff open retry (closes the
+  back-to-back-session lock race); v1.2.x idle lock release watchdog
+  (default 30s idle, reacts within ~5s); v1.3.0 shutdown() keeps the
+  collection open across session boundaries; v1.3.1 adversarial-review
+  fixes. See CHANGELOG.md.
+
+author: kuntao2011 (community port)
+license: MIT
+category: memory
+dependencies:
+  # Pre-1.0 deps must be upper-bounded (policy: >=floor,<0.(minor+2)).
+  # Tested with zvec 0.6.0 — otherwise `hermes update` may pull a breaking
+  # minor while zvec is in its 0.x API churn phase.
+  - zvec>=0.5.0,<0.7
+  - numpy
+  - requests
+config_schema:
+  base_url:
+    type: string
+    default: "http://localhost:11434"
+    description: "Ollama server URL"
+  embedding_model:
+    type: string
+    default: "bge-m3:latest"
+    description: "Embedding model available in Ollama"
+  vector_dim:
+    type: integer
+    default: 1024
+    description: "Embedding vector dimension (bge-m3 = 1024)"
+  zvec_dir:
+    type: string
+    default: "$HERMES_HOME/记忆数据库/zvec_memory"
+    description: "Zvec collection directory (default: profile-scoped)"
+  collection_name:
+    type: string
+    default: "memories"
+    description: "Zvec collection name (must match migration script)"
+  batch_size:
+    type: integer
+    default: 32
+    description: "Max texts per embedding batch"
+  search_top_k:
+    type: integer
+    default: 5
+    description: "Default top-k results per search"
+  min_content_len:
+    type: integer
+    default: 50
+    description: "Skip content shorter than this (chars)"
+  vector_weight:
+    type: number
+    default: 0.7
+    description: "Hybrid search weight for vector branch (0.0-1.0)"
+  fts_weight:
+    type: number
+    default: 0.3
+    description: "Hybrid search weight for FTS branch (0.0-1.0)"
+  enable_hnsw_optimize:
+    type: boolean
+    default: true
+    description: "Call collection.optimize() after large bulk inserts (merges flat buffer into HNSW graph)"
