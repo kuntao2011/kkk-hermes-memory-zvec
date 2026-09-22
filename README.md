@@ -34,7 +34,10 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) with a working
   plugin directory (`~/.hermes/plugins/`)
-- [Ollama](https://ollama.com) running with `bge-m3` (1024-dim embeddings)
+- An **embedding model** served over an Ollama-compatible API (`/api/embed`):
+  local [Ollama](https://ollama.com) with `bge-m3` (1024-dim, the default), or
+  any hosted/online endpoint implementing the same API — just point `base_url`
+  at it. The endpoint's vector dimension must match `vector_dim`.
 - Python 3.11+ (the Hermes venv); dependencies (`zvec>=0.5.0,<0.7`, `numpy`,
   `requests`) are installed automatically from `plugin.yaml`
 
@@ -67,6 +70,11 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
 
 3. Restart the gateway. Dependencies are installed automatically on the next
    start / `hermes update`.
+
+> **Multi-profile:** Hermes profiles are isolated by `$HERMES_HOME` — each
+> profile keeps its own plugin copy, config and data. To use the backend in
+> another profile, repeat the install + config there; nothing is shared or
+> synced between profiles.
 
 ## Configuration
 

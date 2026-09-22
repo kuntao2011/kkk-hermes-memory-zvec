@@ -4,8 +4,9 @@ description: >
   Zvec Vector Memory Provider — a community memory backend for Hermes Agent.
   In-process vector storage (HNSW + RocksDB FTS) with native hybrid query
   (vector similarity + scalar filter + FTS via MultiQuery + RRFReRanker) and
-  local embeddings via Ollama bge-m3 (1024-dim — same dimension as
-  memory-lancedb, so existing vectors migrate without re-embedding).
+  embeddings from any Ollama-compatible endpoint via `base_url` — local Ollama
+  bge-m3 by default (1024-dim — same dimension as memory-lancedb, so existing
+  vectors migrate without re-embedding).
   Exposes the same 6 tool schemas and lifecycle hooks as memory-lancedb;
   switching backends is a config.yaml edit.
 

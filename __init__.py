@@ -2,8 +2,9 @@
 
 In-process vector storage (Zvec: HNSW + RocksDB FTS) with native hybrid query
 (vector similarity + scalar filter + FTS via MultiQuery + RRFReRanker) and
-local Ollama bge-m3 embeddings (1024-dim — same dimension as memory-lancedb,
-so existing vectors migrate without re-embedding).
+embeddings from any Ollama-compatible endpoint via `base_url` (local Ollama
+bge-m3 by default; 1024-dim — same dimension as memory-lancedb, so existing
+vectors migrate without re-embedding).
 
 Lock governance for long-lived sessions — the focus of this port (full
 history in CHANGELOG.md):
