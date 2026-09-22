@@ -24,9 +24,16 @@ history in CHANGELOG.md):
             collection ref against idle-release races; short lock ladder
             (~5.5s worst); bounded prefetch cache (128); throttled
             skipped-write warnings.
+  v1.3.2 — background threads (idle watchdog, prefetch, sync_turn,
+            session-end batch) spawn via _spawn_thread, following the
+            upstream spawn_context_thread contract (contextvars-correct
+            under multi-profile reuse) instead of bare threading.Thread;
+            vendored inline so older cores without the upstream helper
+            keep working.
 
-The config section is plugins.memory-zvec. Same 6 tool schemas and lifecycle
-hooks as memory-lancedb — switching backends is a config.yaml edit.
+The config section is plugins.memory-zvec. Same 5 tool schemas and lifecycle
+hooks as memory-lancedb — switching backends is a config.yaml edit plus a
+one-time data migration.
 
 README.md: install & configuration. CHANGELOG.md: full version history.
 Migrating from memory-lancedb:
@@ -38,6 +45,7 @@ Community port by kuntao2011. MIT licensed. Tested with Zvec 0.6.0 / Python 3.11
 from __future__ import annotations
 
 import atexit
+import contextvars
 import json
 import logging
 import os
@@ -203,7 +211,7 @@ def _ensure_idle_watchdog() -> None:
     with _PROVIDER_REGISTRY_LOCK:
         if _IDLE_WATCHDOG_THREAD is not None and _IDLE_WATCHDOG_THREAD.is_alive():
             return
-        _IDLE_WATCHDOG_THREAD = threading.Thread(
+        _IDLE_WATCHDOG_THREAD = _spawn_thread(
             target=_idle_watchdog_loop, daemon=True, name="zvec-idle-watchdog"
         )
         _IDLE_WATCHDOG_THREAD.start()
@@ -213,6 +221,17 @@ def _ensure_idle_watchdog() -> None:
 # Ollama /api/embed helper (no Python ollama package needed)
 # Identical to memory-lancedb — keeps the swap transparent.
 # ============================================================================
+
+# Context-correct background thread spawning. Vendored from upstream
+# agent.memory_provider.spawn_context_thread (the memory-provider contract:
+# "never a bare threading.Thread"); inlined so the plugin also runs on cores
+# that predate that helper. Runs the target under the spawner's contextvars.
+def _spawn_thread(target, *, name, daemon=True):
+    ctx = contextvars.copy_context()
+    return threading.Thread(
+        target=lambda *a, **k: ctx.run(target, *a, **k), name=name, daemon=daemon
+    )
+
 
 def _ollama_embed(texts: List[str], base_url: str, model: str) -> List[np.ndarray]:
     """Call Ollama /api/embed for batch embeddings. Returns list of np.float32 arrays."""
@@ -881,7 +900,7 @@ class ZvecMemoryProvider(MemoryProvider):
             except Exception:
                 pass
 
-        t = threading.Thread(target=_bg, daemon=True, name="zvec-prefetch")
+        t = _spawn_thread(target=_bg, daemon=True, name="zvec-prefetch")
         t.start()
 
     # -- Write hooks ---------------------------------------------------------
@@ -928,7 +947,7 @@ class ZvecMemoryProvider(MemoryProvider):
             finally:
                 _untrack_write_thread(threading.current_thread())
 
-        t = threading.Thread(target=_store, daemon=True, name="zvec-sync")
+        t = _spawn_thread(target=_store, daemon=True, name="zvec-sync")
         _track_write_thread(t)
         t.start()
 
@@ -1067,7 +1086,7 @@ class ZvecMemoryProvider(MemoryProvider):
             finally:
                 _untrack_write_thread(threading.current_thread())
 
-        t = threading.Thread(target=_batch_store, daemon=True, name="zvec-session-end")
+        t = _spawn_thread(target=_batch_store, daemon=True, name="zvec-session-end")
         _track_write_thread(t)
         t.start()
 

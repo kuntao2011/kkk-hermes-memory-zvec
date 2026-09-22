@@ -21,12 +21,13 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
 - **Session-safe locking** — initialize-time write drain + backoff retry,
   idle lock-release watchdog (default 30s, reacts within ~5s), and a
   collection handle that survives session boundaries.
-- **Drop-in compatible with `memory-lancedb`** — same 6 tool schemas
+- **Drop-in compatible with `memory-lancedb`** — same 5 tool schemas
   (`vec_memory_add/search/list/delete/stats`) and the same
   prefetch / `sync_turn` / `on_session_end` hooks. Switching backends is a
-  `config.yaml` edit; existing 1024-dim vectors are reused without
-  re-embedding.
-- **Fast** — ~13,000 docs/s batch insert; sub-ms search under 100k docs.
+  config edit plus a one-time data migration; existing 1024-dim vectors are
+  reused without re-embedding.
+- **Fast** — batch inserts of ~13k docs/s and sub-ms search under 100k docs
+  in the author's testing (no formal benchmark published).
 - **Local-first** — Ollama embeddings, in-process storage, no external
   services beyond the Ollama endpoint you configure.
 
@@ -64,7 +65,7 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
        base_url: http://localhost:11434
        embedding_model: bge-m3:latest
        vector_dim: 1024
-       zvec_dir: $HERMES_HOME/memory/zvec_memory   # any path you like
+       zvec_dir: $HERMES_HOME/memory/zvec_memory   # override recommended — the built-in default points at the author's own dir layout
        collection_name: memories
    ```
 
@@ -92,8 +93,11 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
 | `fts_weight` | `0.3` | Hybrid search weight for the FTS branch |
 | `enable_hnsw_optimize` | `true` | Call `collection.optimize()` after large bulk inserts |
 
-Environment knob: `HERMES_MEMORY_ZVEC_IDLE_RELEASE_S` — seconds of idleness
-before the watchdog releases a collection lock (default 30).
+Environment knobs: `HERMES_MEMORY_ZVEC_IDLE_RELEASE_S` — seconds of idleness
+before the watchdog releases a collection lock (default 30);
+`HERMES_MEMORY_ZVEC_INIT_DRAIN_S` — max wait draining the previous session's
+in-flight writes at initialize (default 15); `HERMES_MEMORY_ZVEC_EXIT_DRAIN_S`
+— the same at process exit.
 
 ## Migrating from memory-lancedb
 
