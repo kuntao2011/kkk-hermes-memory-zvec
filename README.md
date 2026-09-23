@@ -31,6 +31,21 @@ of problems end to end (see [CHANGELOG.md](CHANGELOG.md)).
 - **Local-first** — Ollama embeddings, in-process storage, no external
   services beyond the Ollama endpoint you configure.
 
+### Search modes
+
+`vec_memory_search` exposes Zvec's dual retrieval paths — three selectable
+modes, so you can search by meaning, by exact text, or both at once:
+
+| `mode` | What it does | Best for |
+|---|---|---|
+| `hybrid` (default) | Vector similarity + full-text keyword in **one** query, fused by RRF re-ranking | Natural-language questions |
+| `vector` | Semantic similarity only | Paraphrased / fuzzy recall ("what did we decide about that pricing issue?") |
+| `keyword` | Full-text only (RocksDB FTS, jieba tokenizer — Chinese-aware) | Exact terms, names, error codes |
+
+Scalar filters ride along in **every** mode: `session_id` and
+`after_timestamp` / `before_timestamp` narrow the candidate set via
+index-level pre-filtering (applied before ANN traversal, not after).
+
 ## Requirements
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) with a working
